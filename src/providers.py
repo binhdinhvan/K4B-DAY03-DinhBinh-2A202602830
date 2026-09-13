@@ -6,6 +6,8 @@ Hỗ trợ Native Tool Calling và chuyển đổi linh hoạt qua biến môi t
 import os
 import sys
 import json
+import re
+import time
 from typing import Dict, Any, List
 from dotenv import load_dotenv
 
@@ -125,7 +127,7 @@ class GeminiProvider(BaseLLMProvider):
     """Google Gemini Provider (Native Tool Calling với Google GenAI SDK)"""
     def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model_name = model or os.getenv("LLM_MODEL") or "gemini-3-flash-preview"
+        self.model_name = model or os.getenv("LLM_MODEL") or "gemini-3.5-flash-lite"
 
     def generate(self, prompt: str, system_prompt: str = "") -> str:
         if not self.api_key or self.api_key == "your_gemini_api_key_here":
@@ -195,10 +197,11 @@ class GeminiProvider(BaseLLMProvider):
 
             except Exception as e:
                 err_str = str(e)
-                # Tự động retry khi gặp Rate Limit (429) để đảm bảo 100% chạy trên API thật
+                # Tự động retry khi gặp Rate Limit (429/RESOURCE_EXHAUSTED) để đảm bảo 100% chạy trên API thật
                 if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_retries - 1:
-                    wait_sec = 18
-                    print(f"⏳ [Gemini Rate Limit (429)]: Gói Free Tier chạm 5 RPM. Tự động chờ {wait_sec}s rồi gọi lại trên Live API (Thử lần {attempt + 2}/{max_retries})...")
+                    retry_match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
+                    wait_sec = int(float(retry_match.group(1))) + 2 if retry_match else 20
+                    print(f"⏳ [Gemini Rate Limit]: Chờ {wait_sec}s để hồi phục Quota rồi thử lại Live API (Lần {attempt + 2}/{max_retries})...")
                     time.sleep(wait_sec)
                     continue
                 else:

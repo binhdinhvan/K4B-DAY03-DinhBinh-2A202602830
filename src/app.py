@@ -71,6 +71,7 @@ def run_react_agent(user_query: str, provider, mcp_server: MCPAcademicServer) ->
     step = 0
     trace_logs = []
     tools_list = mcp_server.list_tools()
+    active_tools = list(tools_list)
     current_prompt = user_query
     
     while step < MAX_ITERATIONS:
@@ -79,7 +80,7 @@ def run_react_agent(user_query: str, provider, mcp_server: MCPAcademicServer) ->
         print(f"\n--- 🔄 Vòng lặp ReAct Loop (Step {step}/{MAX_ITERATIONS}) ---")
         
         # Gọi LLM với Native Tool Calling Specs
-        llm_response = provider.generate_with_tools(current_prompt, tools_list, system_prompt=REACT_AGENT_SYSTEM_PROMPT)
+        llm_response = provider.generate_with_tools(current_prompt, active_tools, system_prompt=REACT_AGENT_SYSTEM_PROMPT)
         latency_ms = round((time.time() - step_start_time) * 1000, 2)
         
         thought = llm_response.get("thought", "Đang suy luận...")
@@ -128,11 +129,19 @@ def run_react_agent(user_query: str, provider, mcp_server: MCPAcademicServer) ->
             })
             
             # Nạp Observation vào ngữ cảnh để tiếp tục vòng lặp ReAct cho bước tiếp theo
-            current_prompt += (
-                f"\n\n[Observation Step {step}]: {obs_str}\n"
-                f"(Từ kết quả quan sát trên, hãy suy luận bước tiếp theo: nếu cần gọi thêm công cụ thì đề xuất gọi, "
-                f"nếu đã có đủ thông tin thì trả lời kết luận cuối cùng cho sinh viên)."
-            )
+            if tool_name == "schedule_appointment" and obs_data.get("status") == "SUCCESS":
+                guidance = "(Tất cả yêu cầu đã hoàn tất thành công. Bây giờ BẮT BUỘC xuất kết luận Final Answer cho sinh viên, tuyệt đối không gọi lại công cụ nào)."
+                active_tools = []
+            elif obs_data.get("status") == "NOT_FOUND":
+                guidance = "(Đã nhận kết quả NOT_FOUND từ cơ sở dữ liệu. Hãy xuất thông báo kết luận Final Answer lịch sự cho người dùng ngay)."
+                active_tools = []
+            elif tool_name == "academic_query" and obs_data.get("status") == "SUCCESS":
+                guidance = "(Từ kết quả quan sát trên, hãy suy luận bước tiếp theo: nếu cần gọi thêm công cụ để hoàn tất yêu cầu thì gọi, nếu đã hoàn thành đầy đủ yêu cầu thì xuất kết luận Final Answer cho sinh viên)."
+                active_tools = [t for t in active_tools if t.get("name") != "academic_query"]
+            else:
+                guidance = "(Từ kết quả quan sát trên, hãy suy luận bước tiếp theo: nếu cần gọi thêm công cụ để hoàn tất yêu cầu thì gọi, nếu đã hoàn thành đầy đủ yêu cầu thì xuất kết luận Final Answer cho sinh viên)."
+
+            current_prompt += f"\n\n[Observation Step {step}]: {obs_str}\n{guidance}"
             
             # Nếu đạt tối đa số vòng lặp mà chưa hoàn tất, xuất kết luận fallback
             if step >= MAX_ITERATIONS:
@@ -176,24 +185,76 @@ def verify_test_case(tc: dict, logs: list) -> tuple:
         return False, "Không gọi đúng tool 'academic_query' hoặc sai mã sinh viên SV2026001."
         
     elif tc_id == "TC03":
-        # Phải gọi schedule_appointment với SV2026001 và ngày 15/09/2026
-        for call in tool_calls:
-            if call.get("tool_name") == "schedule_appointment":
-                args = call.get("arguments", {})
-                if args.get("student_id") == "SV2026001" and "15/09/2026" in str(args.get("datetime_str", "")):
-                    if call.get("observation", {}).get("status") == "SUCCESS":
-                        return True, "Gọi đúng 'schedule_appointment' cho SV2026001 vào 14:00 15/09/2026."
-        return False, "Không gọi đúng 'schedule_appointment' hoặc sai thời gian 14:00 15/09/2026."
+        # Kiểm tra chặt chẽ: gọi đúng schedule_appointment cho SV2026001 và đúng cả giờ lẫn ngày theo câu hỏi
+        import re
+        time_match = re.search(r"(\d{1,2}:\d{2})\s+(?:ngày\s+)?(\d{1,2}/\d{1,2}/\d{4})", tc["question"])
+        expected_hour = time_match.group(1) if time_match else "14:00"
+        expected_date = time_match.group(2) if time_match else "15/09/2026"
+        
+        if len(tool_calls) != 1:
+            return False, f"TC03 là single tool call nhưng đã ghi nhận {len(tool_calls)} tool calls."
+            
+        call = tool_calls[0]
+        if call.get("tool_name") != "schedule_appointment":
+            return False, f"TC03 yêu cầu 'schedule_appointment' nhưng đã gọi '{call.get('tool_name')}'."
+            
+        args = call.get("arguments", {})
+        if args.get("student_id") != "SV2026001":
+            return False, f"Sai mã sinh viên: mong đợi 'SV2026001', thực tế là '{args.get('student_id')}'."
+            
+        actual_dt = str(args.get("datetime_str", ""))
+        if expected_hour not in actual_dt or expected_date not in actual_dt:
+            return False, f"Sai thời gian hẹn: câu hỏi yêu cầu '{expected_hour} {expected_date}', nhưng thực tế gọi '{actual_dt}'."
+            
+        if call.get("observation", {}).get("status") != "SUCCESS":
+            return False, "Tool schedule_appointment không trả về trạng thái SUCCESS."
+            
+        return True, f"Gọi đúng 'schedule_appointment' cho SV2026001 vào đúng {expected_hour} {expected_date}."
         
     elif tc_id == "TC04":
-        # Chuỗi ReAct đa bước: academic_query -> schedule_appointment (với 09:00 20/09/2026)
-        names = [c.get("tool_name") for c in tool_calls]
-        if "academic_query" in names and "schedule_appointment" in names:
-            sched_call = next(c for c in tool_calls if c.get("tool_name") == "schedule_appointment")
-            args = sched_call.get("arguments", {})
-            if "20/09/2026" in str(args.get("datetime_str", "")) and "Nguyễn Văn A" in str(args.get("advisor_name", "")):
-                return True, "Thực hiện chuỗi ReAct đa bước chuẩn xác (Tra cứu cố vấn -> Đặt lịch đúng 09:00 20/09/2026)."
-        return False, "Chưa thực hiện đủ chuỗi đa bước (Tra cứu cố vấn -> Đặt lịch 09:00 20/09/2026)."
+        # Chuỗi ReAct đa bước bắt buộc phải đúng thứ tự logic:
+        # Bước 1 (Step 1): Phải gọi academic_query để tìm cố vấn trước
+        # Bước 2 (Step 2): Phải gọi schedule_appointment để đặt lịch với cố vấn tìm được
+        import re
+        if len(tool_calls) < 2:
+            return False, f"TC04 yêu cầu ReAct đa bước (tối thiểu 2 tool calls), nhưng thực tế chỉ gọi {len(tool_calls)} tool."
+            
+        step1_call = tool_calls[0]
+        step2_call = tool_calls[1]
+        
+        # 1. KIỂM TRA THỨ TỰ BẮT BUỘC
+        if step1_call.get("tool_name") != "academic_query":
+            return False, f"Sai thứ tự chuỗi ReAct: Bước 1 phải gọi 'academic_query' để tìm cố vấn trước, nhưng thực tế lại gọi '{step1_call.get('tool_name')}'."
+            
+        if step2_call.get("tool_name") != "schedule_appointment":
+            return False, f"Sai thứ tự chuỗi ReAct: Bước 2 phải gọi 'schedule_appointment' để đặt lịch, nhưng thực tế lại gọi '{step2_call.get('tool_name')}'."
+            
+        # 2. Kiểm tra tham số Bước 1
+        if step1_call.get("arguments", {}).get("student_id") != "SV2026001":
+            return False, "Bước 1 tra cứu sai mã sinh viên (cần SV2026001)."
+        advisor_found = step1_call.get("observation", {}).get("data", {}).get("advisor", "")
+        if not advisor_found:
+            return False, "Bước 1 không nhận được thông tin cố vấn từ Observation."
+            
+        # 3. Kiểm tra tham số Bước 2
+        args2 = step2_call.get("arguments", {})
+        if args2.get("student_id") != "SV2026001":
+            return False, "Bước 2 đặt lịch sai mã sinh viên (cần SV2026001)."
+        if "Nguyễn Văn A" not in str(args2.get("advisor_name", "")):
+            return False, f"Bước 2 sai cố vấn: cố vấn tìm được là '{advisor_found}', nhưng đặt lịch với '{args2.get('advisor_name')}'."
+            
+        time_match = re.search(r"(\d{1,2}:\d{2})\s+(?:ngày\s+)?(\d{1,2}/\d{1,2}/\d{4})", tc["question"])
+        expected_hour = time_match.group(1) if time_match else "09:00"
+        expected_date = time_match.group(2) if time_match else "20/09/2026"
+        actual_dt = str(args2.get("datetime_str", ""))
+        
+        if expected_hour not in actual_dt or expected_date not in actual_dt:
+            return False, f"Bước 2 sai thời gian hẹn: câu hỏi yêu cầu '{expected_hour} {expected_date}', nhưng thực tế gọi '{actual_dt}'."
+            
+        if step2_call.get("observation", {}).get("status") != "SUCCESS":
+            return False, "Bước 2 đặt lịch không trả về trạng thái SUCCESS."
+            
+        return True, f"Thực hiện chuỗi ReAct đa bước chuẩn xác (Bước 1: tra cứu ra {advisor_found} -> Bước 2: đặt lịch đúng {expected_hour} {expected_date})."
         
     elif tc_id == "TC05":
         # Phải gọi academic_query với SV9999999 và nhận NOT_FOUND
