@@ -151,6 +151,61 @@ def run_react_agent(user_query: str, provider, mcp_server: MCPAcademicServer) ->
     return trace_logs
 
 
+def verify_test_case(tc: dict, logs: list) -> tuple:
+    """Kiểm tra logic đúng/sai của Test Case theo expected_behavior"""
+    tc_id = tc.get("id")
+    tool_calls = [l for l in logs if l.get("action_type") == "TOOL_EXECUTION"]
+    final_answers = [l for l in logs if l.get("action_type") == "FINAL_ANSWER"]
+    
+    if not final_answers:
+        return False, "Thiếu bước xuất Final Answer."
+        
+    if tc_id == "TC01":
+        # Không được gọi bất kỳ Tool nào
+        if len(tool_calls) == 0 and final_answers[0].get("output"):
+            return True, "Trả lời trực tiếp từ System Prompt/Kiến thức chung, không kích hoạt Tool."
+        return False, f"TC01 yêu cầu không gọi Tool nhưng đã kích hoạt {len(tool_calls)} Tool."
+        
+    elif tc_id == "TC02":
+        # Phải gọi academic_query với SV2026001
+        if len(tool_calls) >= 1:
+            first_call = tool_calls[0]
+            if first_call.get("tool_name") == "academic_query" and first_call.get("arguments", {}).get("student_id") == "SV2026001":
+                if first_call.get("observation", {}).get("status") == "SUCCESS":
+                    return True, "Gọi đúng 'academic_query' với SV2026001 và nhận dữ liệu thành công."
+        return False, "Không gọi đúng tool 'academic_query' hoặc sai mã sinh viên SV2026001."
+        
+    elif tc_id == "TC03":
+        # Phải gọi schedule_appointment với SV2026001 và ngày 15/09/2026
+        for call in tool_calls:
+            if call.get("tool_name") == "schedule_appointment":
+                args = call.get("arguments", {})
+                if args.get("student_id") == "SV2026001" and "15/09/2026" in str(args.get("datetime_str", "")):
+                    if call.get("observation", {}).get("status") == "SUCCESS":
+                        return True, "Gọi đúng 'schedule_appointment' cho SV2026001 vào 14:00 15/09/2026."
+        return False, "Không gọi đúng 'schedule_appointment' hoặc sai thời gian 14:00 15/09/2026."
+        
+    elif tc_id == "TC04":
+        # Chuỗi ReAct đa bước: academic_query -> schedule_appointment (với 09:00 20/09/2026)
+        names = [c.get("tool_name") for c in tool_calls]
+        if "academic_query" in names and "schedule_appointment" in names:
+            sched_call = next(c for c in tool_calls if c.get("tool_name") == "schedule_appointment")
+            args = sched_call.get("arguments", {})
+            if "20/09/2026" in str(args.get("datetime_str", "")) and "Nguyễn Văn A" in str(args.get("advisor_name", "")):
+                return True, "Thực hiện chuỗi ReAct đa bước chuẩn xác (Tra cứu cố vấn -> Đặt lịch đúng 09:00 20/09/2026)."
+        return False, "Chưa thực hiện đủ chuỗi đa bước (Tra cứu cố vấn -> Đặt lịch 09:00 20/09/2026)."
+        
+    elif tc_id == "TC05":
+        # Phải gọi academic_query với SV9999999 và nhận NOT_FOUND
+        for call in tool_calls:
+            if call.get("tool_name") == "academic_query" and call.get("arguments", {}).get("student_id") == "SV9999999":
+                if call.get("observation", {}).get("status") == "NOT_FOUND":
+                    return True, "Tra cứu đúng mã SV9999999 và xử lý chuẩn kết quả NOT_FOUND từ Tool."
+        return False, "Không gọi academic_query với đúng mã SV9999999 hoặc không nhận diện NOT_FOUND."
+        
+    return True, "Hoàn tất xử lý ReAct."
+
+
 if __name__ == "__main__":
     print("==========================================================")
     print("🏫 VINUNI AI COURSE - DAY 03 LAB: CHATBOT VS REACT AGENT")
@@ -186,8 +241,10 @@ if __name__ == "__main__":
     elif "--all" in sys.argv:
         print("🚀 [TEST SUITE MODE] Kiểm tra 5 Test Cases:")
         completed_count = 0
+        passed_count = 0
         todo_count = 0
         all_traces = []
+        test_eval_results = []
         
         for tc in tests:
             print(f"\n==================================================")
@@ -203,12 +260,28 @@ if __name__ == "__main__":
                 logs = run_react_agent(tc["question"], provider, mcp_server)
                 all_traces.extend(logs)
                 completed_count += 1
+                
+                # Đánh giá đúng/sai theo tiêu chí kiểm thử
+                is_pass, reason = verify_test_case(tc, logs)
+                if is_pass:
+                    passed_count += 1
+                    test_eval_results.append(f"  ✅ [{tc['id']} - PASS]: {reason}")
+                    print(f"🎯 [KẾT QUẢ ĐÁNH GIÁ]: PASS — {reason}")
+                else:
+                    test_eval_results.append(f"  ❌ [{tc['id']} - FAIL]: {reason}")
+                    print(f"⚠️ [KẾT QUẢ ĐÁNH GIÁ]: FAIL — {reason}")
+                    
                 if completed_count < len(tests):
-                    print("⏳ Đang chờ 13s giữa các test cases để tuân thủ Rate Limit của Gemini API Free Tier...")
-                    time.sleep(13)
+                    print("⏳ Đang chờ 10s giữa các test cases để tuân thủ Rate Limit của Gemini API Free Tier...")
+                    time.sleep(10)
                 
         print(f"\n==================================================")
-        print(f"📊 [KẾT QUẢ TEST SUITE]: Đã thực thi {completed_count}/{len(tests)} Test Cases | {todo_count} Test Cases đang chờ điền câu hỏi (TODO)")
+        print(f"📋 BÁO CÁO NGHIỆM THU KIỂM THỬ (TEST ASSERTIONS REPORT):")
+        for res in test_eval_results:
+            print(res)
+        print(f"\n📊 [KẾT QUẢ TEST SUITE]: {passed_count}/{len(tests)} PASSED ({round(passed_count/len(tests)*100)}%) | {completed_count}/{len(tests)} Đã thực thi | {todo_count} TODO")
+        if passed_count == len(tests):
+            print("🏆 [NGHIỆM THU XUẤT SẮC 100%]: Toàn bộ 5/5 Test Cases đã vượt qua kiểm tra logic và hành vi kỳ vọng!")
         if all_traces:
             save_waterfall_trace(all_traces)
         print(f"💡 Để trò chuyện trực tiếp từng câu: Chạy 'python src/app.py --interactive'")

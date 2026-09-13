@@ -83,9 +83,19 @@ Dán 1 đoạn trích xuất log tiêu biểu từ file `docs/trace_waterfall.js
 
 ## 3. TỔNG KẾT KẾT QUẢ NGHIỆM THU & NỘP BÀI
 
-- [x] Đã điền API Key thật trong `.env` và xác nhận Agent chạy mượt mà trên LLM API thật (Gemini/OpenAI).
-- **Tổng số Test Cases đã chạy thành công:** 5 / 5 test cases.
+- [x] Đã điền API Key thật trong `.env` và xác nhận Agent chạy mượt mà 100% trên LLM API thật (Google Gemini).
+- **Tổng số Test Cases đã chạy thành công:** 5 / 5 test cases (100% PASSED).
 - **Số lượt gọi Tool qua MCP Server chính xác:** 5 lượt.
+
+### 📋 Bảng Đánh giá Kiểm thử Logic (Test Assertions Report):
+| Test Case | Loại kiểm thử | Kết quả | Chi tiết kiểm chứng hành vi |
+| :---: | :--- | :---: | :--- |
+| **TC01** | direct_query | ✅ **PASS** | Trả lời trực tiếp từ System Prompt/Kiến thức chung, không kích hoạt Tool nào. |
+| **TC02** | single_tool_query | ✅ **PASS** | Gọi đúng 'academic_query' với SV2026001 và nhận dữ liệu thành công. |
+| **TC03** | appointment_booking | ✅ **PASS** | Gọi đúng 'schedule_appointment' cho SV2026001 vào đúng 14:00 15/09/2026. |
+| **TC04** | multi_step_reasoning | ✅ **PASS** | Chuỗi ReAct đa bước chuẩn: Tra cứu cố vấn -> Đặt lịch đúng 09:00 20/09/2026. |
+| **TC05** | edge_case_handling | ✅ **PASS** | Tra cứu đúng mã SV9999999 và xử lý chuẩn kết quả NOT_FOUND từ Tool (Anti-hallucination). |
+
 - **Kết quả đẩy Repo nộp bài:** [x] Đã Commit và Push mã nguồn thành công lên GitHub cá nhân.
 
 ---

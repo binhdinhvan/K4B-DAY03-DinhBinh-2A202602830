@@ -42,15 +42,17 @@ class MockOfflineProvider(BaseLLMProvider):
         if "observation" in prompt_lower:
             # Trường hợp TC04: Đã tra cứu xong cố vấn, giờ tiến hành đặt lịch với cố vấn đó
             if "pgs.ts nguyễn văn a" in prompt_lower and "đặt lịch" in prompt_lower and "booking_id" not in prompt_lower:
+                dt_match = re.search(r"\d{1,2}:\d{2}\s+(?:ngày\s+)?\d{1,2}/\d{1,2}/\d{4}", prompt)
+                dt_str = dt_match.group(0) if dt_match else "09:00 20/09/2026"
                 return {
                     "type": "tool_call",
                     "tool_name": "schedule_appointment",
                     "arguments": {
                         "student_id": "SV2026001",
-                        "datetime_str": "09:00 20/09/2026",
+                        "datetime_str": dt_str,
                         "advisor_name": "PGS.TS Nguyễn Văn A"
                     },
-                    "thought": "Đã xác định cố vấn học tập của sinh viên SV2026001 là PGS.TS Nguyễn Văn A. Bước 2: Thực hiện đặt lịch hẹn tư vấn vào lúc 09:00 ngày 20/09/2026 với cố vấn này."
+                    "thought": f"Đã xác định cố vấn học tập của sinh viên SV2026001 là PGS.TS Nguyễn Văn A. Bước 2: Thực hiện đặt lịch hẹn tư vấn vào lúc {dt_str} với cố vấn này."
                 }
             # Trường hợp TC05: Tra cứu mã không tồn tại (NOT_FOUND)
             elif "not_found" in prompt_lower or "không tìm thấy" in prompt_lower:
@@ -63,10 +65,12 @@ class MockOfflineProvider(BaseLLMProvider):
                 }
             # Trường hợp đặt lịch xong (đã có booking_id)
             elif "booking_id" in prompt_lower:
+                dt_match = re.search(r"\d{1,2}:\d{2}\s+(?:ngày\s+)?\d{1,2}/\d{1,2}/\d{4}", prompt)
+                dt_str = dt_match.group(0) if dt_match else "14:00 15/09/2026"
                 return {
                     "type": "text",
-                    "content": "Đã đặt lịch hẹn tư vấn học vụ thành công cho sinh viên SV2026001 với PGS.TS Nguyễn Văn A vào lúc 09:00 ngày 20/09/2026.",
-                    "thought": "Đã nhận được xác nhận booking từ MCP Server. Hoàn tất chuỗi suy luận ReAct và thông báo cho người dùng."
+                    "content": f"Đã đặt lịch hẹn tư vấn học vụ thành công cho sinh viên SV2026001 với PGS.TS Nguyễn Văn A vào lúc {dt_str}.",
+                    "thought": f"Đã nhận được xác nhận booking từ MCP Server vào lúc {dt_str}. Hoàn tất chuỗi suy luận ReAct và thông báo cho người dùng."
                 }
             # Trường hợp tra cứu sinh viên thành công (TC02)
             else:
@@ -91,11 +95,13 @@ class MockOfflineProvider(BaseLLMProvider):
         elif "đặt lịch" in prompt_lower:
             match = re.search(r"sv\d+", prompt_lower)
             sid = match.group(0).upper() if match else "SV2026001"
+            dt_match = re.search(r"\d{1,2}:\d{2}\s+(?:ngày\s+)?\d{1,2}/\d{1,2}/\d{4}", prompt)
+            dt_str = dt_match.group(0) if dt_match else "14:00 15/09/2026"
             return {
                 "type": "tool_call",
                 "tool_name": "schedule_appointment",
-                "arguments": {"student_id": sid, "datetime_str": "14:00 15/09/2026", "advisor_name": "PGS.TS Nguyễn Văn A"},
-                "thought": f"Người dùng yêu cầu đặt lịch hẹn tư vấn cho sinh viên {sid}. Tôi sẽ gọi tool schedule_appointment."
+                "arguments": {"student_id": sid, "datetime_str": dt_str, "advisor_name": "PGS.TS Nguyễn Văn A"},
+                "thought": f"Người dùng yêu cầu đặt lịch hẹn tư vấn cho sinh viên {sid} vào lúc {dt_str}. Tôi sẽ gọi tool schedule_appointment."
             }
         # TC02 & TC05: Tra cứu học vụ
         elif "tra cứu" in prompt_lower or "thông tin" in prompt_lower or "sv" in prompt_lower:
@@ -119,7 +125,7 @@ class GeminiProvider(BaseLLMProvider):
     """Google Gemini Provider (Native Tool Calling với Google GenAI SDK)"""
     def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model_name = model or os.getenv("LLM_MODEL") or "gemini-2.5-flash"
+        self.model_name = model or os.getenv("LLM_MODEL") or "gemini-3-flash-preview"
 
     def generate(self, prompt: str, system_prompt: str = "") -> str:
         if not self.api_key or self.api_key == "your_gemini_api_key_here":
@@ -138,56 +144,66 @@ class GeminiProvider(BaseLLMProvider):
             print("ℹ️ [Gemini Provider]: Chưa tìm thấy GEMINI_API_KEY hợp lệ. Tự động chuyển sang Mock Offline.")
             return MockOfflineProvider().generate_with_tools(prompt, tools_schema, system_prompt)
         
-        try:
-            from google import genai
-            from google.genai import types
+        import time
+        from google import genai
+        from google.genai import types
 
-            client = genai.Client(api_key=self.api_key)
-            
-            # Chuẩn hóa function declarations cho Gemini SDK
-            function_declarations = []
-            for tool in tools_schema:
-                # Bỏ qua các tool schema chưa được định nghĩa hoàn chỉnh
-                if not tool.get("name") or not tool.get("parameters"):
+        client = genai.Client(api_key=self.api_key)
+        
+        # Chuẩn hóa function declarations cho Gemini SDK
+        function_declarations = []
+        for tool in tools_schema:
+            if not tool.get("name") or not tool.get("parameters"):
+                continue
+            function_declarations.append({
+                "name": tool["name"],
+                "description": tool.get("description", ""),
+                "parameters": tool.get("parameters", {})
+            })
+
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt if system_prompt else None,
+            tools=[{"function_declarations": function_declarations}] if function_declarations else None,
+            temperature=0.2
+        )
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=config
+                )
+
+                # Kiểm tra xem Gemini có trả về Tool Call không
+                if response.function_calls:
+                    call = response.function_calls[0]
+                    args = dict(call.args) if hasattr(call, 'args') and call.args else {}
+                    return {
+                        "type": "tool_call",
+                        "tool_name": call.name,
+                        "arguments": args,
+                        "thought": f"Gemini quyết định gọi công cụ '{call.name}' với tham số: {json.dumps(args, ensure_ascii=False)}"
+                    }
+                else:
+                    return {
+                        "type": "text",
+                        "content": response.text or "",
+                        "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ)."
+                    }
+
+            except Exception as e:
+                err_str = str(e)
+                # Tự động retry khi gặp Rate Limit (429) để đảm bảo 100% chạy trên API thật
+                if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_retries - 1:
+                    wait_sec = 18
+                    print(f"⏳ [Gemini Rate Limit (429)]: Gói Free Tier chạm 5 RPM. Tự động chờ {wait_sec}s rồi gọi lại trên Live API (Thử lần {attempt + 2}/{max_retries})...")
+                    time.sleep(wait_sec)
                     continue
-                function_declarations.append({
-                    "name": tool["name"],
-                    "description": tool.get("description", ""),
-                    "parameters": tool.get("parameters", {})
-                })
-
-            config = types.GenerateContentConfig(
-                system_instruction=system_prompt if system_prompt else None,
-                tools=[{"function_declarations": function_declarations}] if function_declarations else None,
-                temperature=0.2
-            )
-
-            response = client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config
-            )
-
-            # Kiểm tra xem Gemini có trả về Tool Call không
-            if response.function_calls:
-                call = response.function_calls[0]
-                args = dict(call.args) if hasattr(call, 'args') and call.args else {}
-                return {
-                    "type": "tool_call",
-                    "tool_name": call.name,
-                    "arguments": args,
-                    "thought": f"Gemini quyết định gọi công cụ '{call.name}' với tham số: {json.dumps(args, ensure_ascii=False)}"
-                }
-            else:
-                return {
-                    "type": "text",
-                    "content": response.text or "",
-                    "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ)."
-                }
-
-        except Exception as e:
-            print(f"⚠️ [Gemini API Warning]: Không thể kết nối live API ({str(e)}). Tự động fallback về Mock.")
-            return MockOfflineProvider().generate_with_tools(prompt, tools_schema, system_prompt)
+                else:
+                    print(f"⚠️ [Gemini API Warning]: Không thể kết nối live API ({err_str}). Fallback về Mock.")
+                    return MockOfflineProvider().generate_with_tools(prompt, tools_schema, system_prompt)
 
 
 class OpenAIProvider(BaseLLMProvider):
