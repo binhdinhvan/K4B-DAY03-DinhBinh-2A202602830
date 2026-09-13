@@ -28,25 +28,23 @@ Dán 1 đoạn trích xuất log tiêu biểu từ file `docs/trace_waterfall.js
 [
   {
     "step": 1,
-    "query": "Hãy tra cứu thông tin học vụ của sinh viên SV2026001.",
+    "query": "Hãy đặt lịch hẹn tư vấn học vụ cho sinh viên SV2026001 vào lúc 14:00 ngày 15/09/2026 với cố vấn PGS.TS Nguyễn Văn A.",
     "action_type": "TOOL_EXECUTION",
-    "tool_name": "academic_query",
+    "tool_name": "schedule_appointment",
     "arguments": {
-      "student_id": "SV2026001"
+      "datetime_str": "14:00 15/09/2026",
+      "student_id": "SV2026001",
+      "advisor_name": "PGS.TS Nguyễn Văn A"
     },
     "observation": {
       "status": "SUCCESS",
+      "booking_id": "BK-SV2026001-99",
       "student_id": "SV2026001",
-      "data": {
-        "full_name": "Nguyễn Văn An",
-        "class": "AI-K4",
-        "gpa": 3.85,
-        "email": "an.nv@vinuni.edu.vn",
-        "status": "Đang học",
-        "advisor": "PGS.TS Nguyễn Văn A"
-      }
+      "datetime": "14:00 15/09/2026",
+      "advisor": "PGS.TS Nguyễn Văn A",
+      "message": "Đặt lịch thành công cho sinh viên SV2026001 với PGS.TS Nguyễn Văn A vào lúc 14:00 15/09/2026."
     },
-    "latency_ms": 500.88
+    "latency_ms": 1835.92
   }
 ]
 ```

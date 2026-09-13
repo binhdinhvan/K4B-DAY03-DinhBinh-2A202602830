@@ -4,8 +4,8 @@
     "query": "Chào bạn, bạn có thể giới thiệu quy chế học vụ cơ bản của Đại học VinUni không?",
     "action_type": "FINAL_ANSWER",
     "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ).",
-    "output": "Chào bạn, tôi là Trợ lý Tác tử Học vụ Thông minh của Đại học VinUni. Rất vui được hỗ trợ bạn.\n\nVề quy chế học vụ cơ bản của Đại học VinUni, bạn có thể tham khảo các thông tin sau:\n\n*   **Hệ thống tín chỉ:** VinUni áp dụng hệ thống tín chỉ ECTS (European Credit Transfer and Accumulation System), mỗi tín chỉ tương đương với khoảng 25-30 giờ học tập (bao gồm cả giờ lên lớp và tự học).\n*   **Cấu trúc chương trình:** Các chương trình đào tạo được thiết kế theo cấu trúc cử nhân, thạc sĩ, tiến sĩ với các môn học đại cương, cơ sở ngành và chuyên ngành.\n*   **Đánh giá kết quả học tập:** Sinh viên được đánh giá thông qua nhiều hình thức như bài kiểm tra, bài tập lớn, thuyết trình, dự án và thi cuối kỳ. Thang điểm thường là thang điểm chữ (A, B, C, D, F) tương ứng với thang điểm số.\n*   **Điều kiện tốt nghiệp:** Để tốt nghiệp, sinh viên cần hoàn thành đủ số tín chỉ quy định của chương trình, đạt điểm trung bình tích lũy (GPA) tối thiểu và đáp ứng các yêu cầu khác như chuẩn đầu ra ngoại ngữ, thực tập, khóa luận tốt nghiệp (nếu có).\n*   **Cố vấn học tập:** Mỗi sinh viên đều có một cố vấn học tập để hỗ trợ trong quá trình học tập, định hướng nghề nghiệp và giải quyết các vấn đề liên quan đến học vụ.\n\nĐây là những thông tin cơ bản nhất. Nếu bạn muốn tìm hiểu sâu hơn về một khía cạnh cụ thể nào đó hoặc có câu hỏi liên quan đến hồ sơ học vụ của mình, đừng ngần ngại hỏi nhé!",
-    "latency_ms": 3856.11
+    "output": "Chào bạn, tôi là Trợ lý Tác tử Học vụ Thông minh của Đại học VinUni. Rất vui được hỗ trợ bạn.\n\nVề quy chế học vụ cơ bản của Đại học VinUni, bạn có thể tham khảo các thông tin chính sau:\n\n*   **Hệ thống tín chỉ:** VinUni áp dụng hệ thống tín chỉ ECTS (European Credit Transfer and Accumulation System), mỗi tín chỉ tương đương với khoảng 25-30 giờ học tập (bao gồm cả giờ lên lớp và tự học).\n*   **Cấu trúc chương trình:** Các chương trình đào tạo được thiết kế theo cấu trúc cử nhân, thạc sĩ, tiến sĩ với các môn học đại cương, cơ sở ngành và chuyên ngành.\n*   **Đánh giá kết quả học tập:** Sinh viên được đánh giá thông qua nhiều hình thức như bài kiểm tra giữa kỳ, cuối kỳ, tiểu luận, thuyết trình, dự án nhóm, v.v. Thang điểm thường là thang điểm chữ (A, B, C, D, F) hoặc thang điểm 4.0.\n*   **Điều kiện tốt nghiệp:** Để tốt nghiệp, sinh viên cần hoàn thành đủ số tín chỉ quy định của chương trình đào tạo, đạt điểm trung bình tích lũy (GPA) tối thiểu, và đáp ứng các yêu cầu khác như chuẩn đầu ra tiếng Anh, thực tập, khóa luận tốt nghiệp (nếu có).\n*   **Các quy định khác:** Ngoài ra, còn có các quy định về việc đăng ký môn học, rút môn, bảo lưu kết quả, xử lý học vụ đối với sinh viên có kết quả học tập kém, v.v.\n\nĐể có thông tin chi tiết và chính xác nhất, bạn nên tham khảo trực tiếp \"Sổ tay sinh viên\" hoặc \"Quy chế đào tạo\" chính thức của Đại học VinUni, thường được cung cấp trên cổng thông tin sinh viên hoặc website của trường.\n\nBạn có câu hỏi cụ thể nào khác về quy chế học vụ không? Hoặc bạn muốn tôi tra cứu thông tin học vụ của bạn (nếu bạn là sinh viên VinUni) hay đặt lịch hẹn tư vấn?",
+    "latency_ms": 4369.03
   },
   {
     "step": 1,
@@ -27,7 +27,7 @@
         "advisor": "PGS.TS Nguyễn Văn A"
       }
     },
-    "latency_ms": 469.22
+    "latency_ms": 464.47
   },
   {
     "step": 2,
@@ -43,8 +43,8 @@
     "action_type": "TOOL_EXECUTION",
     "tool_name": "schedule_appointment",
     "arguments": {
-      "student_id": "SV2026001",
       "datetime_str": "14:00 15/09/2026",
+      "student_id": "SV2026001",
       "advisor_name": "PGS.TS Nguyễn Văn A"
     },
     "observation": {
@@ -55,7 +55,7 @@
       "advisor": "PGS.TS Nguyễn Văn A",
       "message": "Đặt lịch thành công cho sinh viên SV2026001 với PGS.TS Nguyễn Văn A vào lúc 14:00 15/09/2026."
     },
-    "latency_ms": 511.55
+    "latency_ms": 1835.92
   },
   {
     "step": 2,
@@ -83,7 +83,7 @@
       "advisor": "PGS.TS Nguyễn Văn A",
       "message": "Đặt lịch thành công cho sinh viên SV2026001 với PGS.TS Nguyễn Văn A vào lúc 14:00 15/09/2026."
     },
-    "latency_ms": 514.48
+    "latency_ms": 569.08
   },
   {
     "step": 2,
@@ -113,7 +113,7 @@
         "advisor": "PGS.TS Nguyễn Văn A"
       }
     },
-    "latency_ms": 682.35
+    "latency_ms": 534.23
   },
   {
     "step": 2,
