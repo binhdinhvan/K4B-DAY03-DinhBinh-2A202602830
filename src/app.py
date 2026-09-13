@@ -214,6 +214,7 @@ if __name__ == "__main__":
                 logs = run_react_agent(tc["question"], provider, mcp_server)
                 all_traces.extend(logs)
                 completed_count += 1
+                time.sleep(2)
                 
         print(f"\n==================================================")
         print(f"📊 [KẾT QUẢ TEST SUITE]: Đã thực thi {completed_count}/{len(tests)} Test Cases | {todo_count} Test Cases đang chờ điền câu hỏi (TODO)")
