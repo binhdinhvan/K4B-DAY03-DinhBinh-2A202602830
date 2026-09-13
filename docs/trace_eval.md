@@ -28,11 +28,33 @@ Dán 1 đoạn trích xuất log tiêu biểu từ file `docs/trace_waterfall.js
 [
   {
     "step": 1,
-    "query": "Hãy đặt lịch hẹn tư vấn học vụ cho sinh viên SV2026001 vào lúc 14:00 ngày 15/09/2026 với cố vấn PGS.TS Nguyễn Văn A.",
+    "query": "Hãy kiểm tra xem sinh viên SV2026001 có cố vấn học tập là ai, sau đó đặt lịch hẹn tư vấn với cố vấn đó vào lúc 09:00 ngày 20/09/2026.",
+    "action_type": "TOOL_EXECUTION",
+    "tool_name": "academic_query",
+    "arguments": {
+      "student_id": "SV2026001"
+    },
+    "observation": {
+      "status": "SUCCESS",
+      "student_id": "SV2026001",
+      "data": {
+        "full_name": "Nguyễn Văn An",
+        "class": "AI-K4",
+        "gpa": 3.85,
+        "email": "an.nv@vinuni.edu.vn",
+        "status": "Đang học",
+        "advisor": "PGS.TS Nguyễn Văn A"
+      }
+    },
+    "latency_ms": 482.69
+  },
+  {
+    "step": 2,
+    "query": "Hãy kiểm tra xem sinh viên SV2026001 có cố vấn học tập là ai, sau đó đặt lịch hẹn tư vấn với cố vấn đó vào lúc 09:00 ngày 20/09/2026.",
     "action_type": "TOOL_EXECUTION",
     "tool_name": "schedule_appointment",
     "arguments": {
-      "datetime_str": "14:00 15/09/2026",
+      "datetime_str": "09:00 20/09/2026",
       "student_id": "SV2026001",
       "advisor_name": "PGS.TS Nguyễn Văn A"
     },
@@ -40,11 +62,19 @@ Dán 1 đoạn trích xuất log tiêu biểu từ file `docs/trace_waterfall.js
       "status": "SUCCESS",
       "booking_id": "BK-SV2026001-99",
       "student_id": "SV2026001",
-      "datetime": "14:00 15/09/2026",
+      "datetime": "09:00 20/09/2026",
       "advisor": "PGS.TS Nguyễn Văn A",
-      "message": "Đặt lịch thành công cho sinh viên SV2026001 với PGS.TS Nguyễn Văn A vào lúc 14:00 15/09/2026."
+      "message": "Đặt lịch thành công cho sinh viên SV2026001 với PGS.TS Nguyễn Văn A vào lúc 09:00 20/09/2026."
     },
-    "latency_ms": 1835.92
+    "latency_ms": 1857.02
+  },
+  {
+    "step": 3,
+    "query": "Hãy kiểm tra xem sinh viên SV2026001 có cố vấn học tập là ai, sau đó đặt lịch hẹn tư vấn với cố vấn đó vào lúc 09:00 ngày 20/09/2026.",
+    "action_type": "FINAL_ANSWER",
+    "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ).",
+    "output": "Chào bạn, tôi đã thực hiện các yêu cầu của bạn và đây là kết quả:\n1. Thông tin Cố vấn học tập: Sinh viên Nguyễn Văn An (SV2026001) có cố vấn học tập là PGS.TS Nguyễn Văn A.\n2. Kết quả đặt lịch hẹn: Tôi đã đặt lịch hẹn thành công cho bạn với PGS.TS Nguyễn Văn A vào 09:00 ngày 20/09/2026 (Mã lịch hẹn: BK-SV2026001-99).",
+    "latency_ms": 3461.64
   }
 ]
 ```
@@ -55,7 +85,7 @@ Dán 1 đoạn trích xuất log tiêu biểu từ file `docs/trace_waterfall.js
 
 - [x] Đã điền API Key thật trong `.env` và xác nhận Agent chạy mượt mà trên LLM API thật (Gemini/OpenAI).
 - **Tổng số Test Cases đã chạy thành công:** 5 / 5 test cases.
-- **Số lượt gọi Tool qua MCP Server chính xác:** 4 lượt.
+- **Số lượt gọi Tool qua MCP Server chính xác:** 5 lượt.
 - **Kết quả đẩy Repo nộp bài:** [x] Đã Commit và Push mã nguồn thành công lên GitHub cá nhân.
 
 ---
