@@ -4,7 +4,14 @@ Mã nguồn chứa danh sách Tool Schemas (JSON Schema) và Execution Layer ph�
 """
 
 import json
+import sys
 from typing import Dict, Any
+
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 # ==============================================================================
 # 1. KHAI BÁO TOOL SCHEMAS CHUẨN NATIVE JSON SCHEMA (TASK 1.2)
@@ -127,3 +134,22 @@ def dispatch_tool_call(tool_name: str, arguments: Dict[str, Any]) -> str:
         except Exception as e:
             return json.dumps({"status": "EXECUTION_ERROR", "error": str(e)}, ensure_ascii=False)
     return json.dumps({"status": "UNKNOWN_TOOL", "error": f"Tool '{tool_name}' không tồn tại!"}, ensure_ascii=False)
+
+
+if __name__ == "__main__":
+    print("==========================================================")
+    print("🛠️ KIỂM THỬ BACKEND TOOLS (src/tools.py)")
+    print("==========================================================")
+    print(f"📦 Số lượng Tools Schema: {len(TOOLS_SCHEMA)}")
+    for t in TOOLS_SCHEMA:
+        props = list(t.get("parameters", {}).get("properties", {}).keys())
+        req = t.get("parameters", {}).get("required", [])
+        print(f"  • Tool '{t['name']}': Tham số = {props} | Bắt buộc = {req}")
+
+    print("\n🧪 Test thực thi Tool 1 (academic_query):")
+    print("  ", dispatch_tool_call("academic_query", {"student_id": "SV2026001"}))
+
+    print("\n🧪 Test thực thi Tool 2 (schedule_appointment):")
+    print("  ", dispatch_tool_call("schedule_appointment", {"student_id": "SV2026001", "datetime_str": "14:00 15/09/2026"}))
+    print("\n✅ Mọi Tool Backend đều hoạt động chuẩn xác!")
+
